@@ -1,0 +1,10 @@
+# Ignorar dependencias
+node_modules/
+
+# Archivos temporales y de entorno
+
+.DS_Store
+Thumbs.db
+
+# Archivos de logs
+*.log
