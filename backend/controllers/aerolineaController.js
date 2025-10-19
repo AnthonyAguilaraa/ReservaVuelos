@@ -21,12 +21,12 @@ exports.insertarAerolinea = async (req , res) => {
 // Modificar Aerolínea
 
 exports.modificarAerolinea = async (req, res) => {
-    const { id_aerolinea, nombre_aerolinea, pais_origen } = req.body;
+    const { id_aerolinea, nombre_aerolinea, pais_origen, estado } = req.body;
 
     try{
-        const query = 'UPDATE Aerolinea SET nombre_aerolinea = $1, pais_origen = $2 WHERE id_aerolinea = $3 RETURNING *';
+        const query = 'UPDATE Aerolinea SET nombre_aerolinea = $1, pais_origen = $2, estado = $3 WHERE id_aerolinea = $4 RETURNING *';
 
-        const values = [nombre_aerolinea, pais_origen, id_aerolinea]
+        const values = [nombre_aerolinea, pais_origen, estado, id_aerolinea]
 
         const client = await pool.connect();
         const result = await client.query(query, values);
