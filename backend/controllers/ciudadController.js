@@ -1,0 +1,167 @@
+const pool = require('../config/db');
+
+// Helpers de validación simples
+function validarIATA(codigo) {
+  if (codigo == null || codigo === '') return true; // opcional
+  return typeof codigo === 'string' && /^[A-Za-z]{3}$/.test(codigo);
+}
+
+// Insertar Ciudad
+exports.insertarCiudad = async (req, res) => {
+  try {
+    let { nombre_ciudad, pais, codigo_iata, zona_horaria } = req.body;
+
+    if (!nombre_ciudad || !pais) {
+      return res.status(400).json({ error: 'nombre_ciudad y pais son obligatorios' });
+    }
+
+    if (!validarIATA(codigo_iata)) {
+      return res.status(400).json({ error: 'codigo_iata debe tener exactamente 3 letras (ej. MEX, MAD, JFK)' });
+    }
+
+    // Normalizar IATA en mayúsculas si viene
+    if (codigo_iata) codigo_iata = codigo_iata.toUpperCase();
+
+    const query = `
+      INSERT INTO ciudades (nombre_ciudad, pais, codigo_iata, zona_horaria)
+      VALUES ($1, $2, $3, $4)
+      RETURNING ciudad_id
+    `;
+    const values = [nombre_ciudad, pais, codigo_iata || null, zona_horaria || null];
+
+    const client = await pool.connect();
+    const result = await client.query(query, values);
+    client.release();
+
+    return res.status(201).json({
+      message: 'Ciudad creada exitosamente',
+      id: result.rows[0].ciudad_id
+    });
+  } catch (err) {
+    // Manejo de UNIQUE en codigo_iata
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'El codigo_iata ya existe' });
+    }
+    console.error('Error en insertarCiudad:', err);
+    return res.status(500).json({ error: 'Error en el servidor' });
+  }
+};
+
+// Modificar Ciudad
+exports.modificarCiudad = async (req, res) => {
+  try {
+    let { ciudad_id, nombre_ciudad, pais, codigo_iata, zona_horaria, estado } = req.body;
+
+    if (!ciudad_id) {
+      return res.status(400).json({ error: 'ciudad_id es obligatorio' });
+    }
+
+    if (codigo_iata && !validarIATA(codigo_iata)) {
+      return res.status(400).json({ error: 'codigo_iata debe tener exactamente 3 letras' });
+    }
+
+    if (codigo_iata) codigo_iata = codigo_iata.toUpperCase();
+
+    const query = `
+      UPDATE ciudades
+         SET nombre_ciudad = COALESCE($1, nombre_ciudad),
+             pais          = COALESCE($2, pais),
+             codigo_iata   = COALESCE($3, codigo_iata),
+             zona_horaria  = COALESCE($4, zona_horaria),
+             estado        = COALESCE($5, estado)
+       WHERE ciudad_id = $6
+       RETURNING *
+    `;
+    const values = [
+      nombre_ciudad ?? null,
+      pais ?? null,
+      // Si mandan cadena vacía para limpiar el IATA, guárdalo como null
+      (codigo_iata === '' ? null : (codigo_iata ?? null)),
+      zona_horaria ?? null,
+      estado ?? null,
+      ciudad_id
+    ];
+
+    const client = await pool.connect();
+    const result = await client.query(query, values);
+    client.release();
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Ciudad no encontrada' });
+    }
+
+    return res.status(200).json({ message: 'Ciudad modificada exitosamente' });
+  } catch (err) {
+    if (err.code === '23505') {
+      return res.status(409).json({ error: 'El codigo_iata ya existe' });
+    }
+    console.error('Error en modificarCiudad:', err);
+    return res.status(500).json({ error: 'Error en el servidor' });
+  }
+};
+
+// Eliminar Ciudad lógicamente (estado = 'inactivo')
+exports.eliminarCiudad = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const query = `
+      UPDATE ciudades
+         SET estado = $1
+       WHERE ciudad_id = $2
+       RETURNING *
+    `;
+    const values = ['inactivo', id];
+
+    const client = await pool.connect();
+    const result = await client.query(query, values);
+    client.release();
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Ciudad no encontrada' });
+    }
+
+    return res.status(200).json({ message: 'Ciudad eliminada (inactivada) exitosamente' });
+  } catch (err) {
+    console.error('Error en eliminarCiudad:', err);
+    return res.status(500).json({ error: 'Error en el servidor' });
+  }
+};
+
+
+// Consultar todas las ciudades (ordenadas por id)
+exports.consultarCiudades = async (_req, res) => {
+  try {
+    const query = 'SELECT * FROM ciudades ORDER BY ciudad_id ASC';
+
+    const client = await pool.connect();
+    const result = await client.query(query);
+    client.release();
+
+    return res.status(200).json(result.rows);
+  } catch (err) {
+    console.error('Error en consultarCiudades:', err);
+    return res.status(500).json({ error: 'Error en el servidor' });
+  }
+};
+
+// Consultar ciudad por ID
+exports.consultarCiudadPorId = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const query = 'SELECT * FROM ciudades WHERE ciudad_id = $1';
+    const values = [id];
+
+    const client = await pool.connect();
+    const result = await client.query(query, values);
+    client.release();
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Ciudad no encontrada' });
+    }
+
+    return res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error en consultarCiudadPorId:', err);
+    return res.status(500).json({ error: 'Error en el servidor' });
+  }
+};
