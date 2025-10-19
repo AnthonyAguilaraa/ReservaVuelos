@@ -18,9 +18,10 @@ app.use(cors({
 
 // RUTAS
 const usuarioRoutes = require('./routes/usuariosRoutes');
-
+const aerolineaRoutes = require('./routes/AerolineaRoute');
 
 app.use('/api', usuarioRoutes);
+app.use('/api', aerolineaRoutes);
 
 // Example route
 app.get('/', (req, res) => {
