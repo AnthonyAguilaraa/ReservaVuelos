@@ -1,24 +1,23 @@
-import './style.css'
-import typescriptLogo from './typescript.svg'
-import viteLogo from '/vite.svg'
-import { setupCounter } from './counter.ts'
+import './style.css'; // Importa el style.css (que debe estar vacío)
+import { renderLogin } from './pages/login';
+import { renderDashboard } from './pages/dashboard';
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="${viteLogo}" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://www.typescriptlang.org/" target="_blank">
-      <img src="${typescriptLogo}" class="logo vanilla" alt="TypeScript logo" />
-    </a>
-    <h1>Vite + TypeScript</h1>
-    <div class="card">
-      <button id="counter" type="button"></button>
-    </div>
-    <p class="read-the-docs">
-      Click on the Vite and TypeScript logos to learn more
-    </p>
-  </div>
-`
+// --- Punto de entrada de la aplicación ---
 
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+// 1. Obtener el contenedor principal de index.html
+const appContainer = document.querySelector<HTMLDivElement>('#app');
+
+if (appContainer) {
+  // 2. Revisar si ya existe un token de sesión
+  const token = localStorage.getItem('token');
+
+  if (token) {
+    // 3. Si hay token, el usuario ya está logueado
+    renderDashboard(appContainer);
+  } else {
+    // 4. Si NO hay token, mostrar la página de login
+    renderLogin(appContainer);
+  }
+} else {
+  console.error('Error: No se encontró el elemento #app en el DOM.');
+}
