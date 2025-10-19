@@ -9,4 +9,4 @@ function authenticateToken(req, res, next) {
     } catch (error) { 
         res.status(400).json({ message: 'Token no válido' }); } } 
 
-module.exports = authenticateToken;
+module.exports = authenticateToken; 

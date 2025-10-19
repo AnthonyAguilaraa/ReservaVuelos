@@ -8,7 +8,7 @@ const app = express();
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: false }));
 
-// CORS configuration
+// CORS 
 app.use(cors({
     origin: ['http://localhost:4200'], 
     methods: ['GET', 'POST', 'OPTIONS', 'PUT', 'PATCH', 'DELETE'],
@@ -16,7 +16,12 @@ app.use(cors({
     credentials: true
 }));
 
-// Define your routes here
+// RUTAS
+const usuarioRoutes = require('./routes/usuariosRoutes');
+
+
+app.use('/api', usuarioRoutes);
+
 // Example route
 app.get('/', (req, res) => {
     res.send('Hola Mundo');
