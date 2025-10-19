@@ -1,6 +1,7 @@
 const pool = require('../config/db');
 
 // Crear vuelo
+// Crear vuelo
 exports.insertarVuelo = async (req, res) => {
   const {
     numero_vuelo,
@@ -11,10 +12,11 @@ exports.insertarVuelo = async (req, res) => {
     fecha_llegada,
     hora_llegada,
     aerolinea_id,
+    precio,  // Agregar el precio aquí
   } = req.body;
 
   try {
-    if (!numero_vuelo || !ciudad_origen || !ciudad_destino || !fecha_salida || !hora_salida || !fecha_llegada || !hora_llegada || !aerolinea_id) {
+    if (!numero_vuelo || !ciudad_origen || !ciudad_destino || !fecha_salida || !hora_salida || !fecha_llegada || !hora_llegada || !aerolinea_id || precio === undefined) {
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
     }
     if (ciudad_origen === ciudad_destino) {
@@ -39,11 +41,11 @@ exports.insertarVuelo = async (req, res) => {
 
     const query = `
       INSERT INTO Vuelo
-        (numero_vuelo, ciudad_origen, ciudad_destino, fecha_salida, hora_salida, fecha_llegada, hora_llegada, aerolinea_id)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        (numero_vuelo, ciudad_origen, ciudad_destino, fecha_salida, hora_salida, fecha_llegada, hora_llegada, aerolinea_id, precio)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING id_vuelo
     `;
-    const values = [numero_vuelo, ciudad_origen, ciudad_destino, fecha_salida, hora_salida, fecha_llegada, hora_llegada, aerolinea_id];
+    const values = [numero_vuelo, ciudad_origen, ciudad_destino, fecha_salida, hora_salida, fecha_llegada, hora_llegada, aerolinea_id, precio];
 
     const result = await client.query(query, values);
     client.release();
@@ -55,6 +57,8 @@ exports.insertarVuelo = async (req, res) => {
   }
 };
 
+
+// Modificar vuelo
 // Modificar vuelo
 exports.modificarVuelo = async (req, res) => {
   const {
@@ -68,6 +72,7 @@ exports.modificarVuelo = async (req, res) => {
     hora_llegada,
     aerolinea_id,
     estado, // opcional para cambiar activo/inactivo
+    precio, // agregar el precio aquí
   } = req.body;
 
   try {
@@ -86,14 +91,15 @@ exports.modificarVuelo = async (req, res) => {
     const push = (col, val) => { fields.push(`${col} = $${i++}`); values.push(val); };
 
     if (numero_vuelo !== undefined) push('numero_vuelo', numero_vuelo);
-    if (ciudad_origen !== undefined)  push('ciudad_origen', ciudad_origen);
+    if (ciudad_origen !== undefined) push('ciudad_origen', ciudad_origen);
     if (ciudad_destino !== undefined) push('ciudad_destino', ciudad_destino);
-    if (fecha_salida !== undefined)   push('fecha_salida', fecha_salida);
-    if (hora_salida !== undefined)    push('hora_salida', hora_salida);
-    if (fecha_llegada !== undefined)  push('fecha_llegada', fecha_llegada);
-    if (hora_llegada !== undefined)   push('hora_llegada', hora_llegada);
-    if (aerolinea_id !== undefined)   push('aerolinea_id', aerolinea_id);
-    if (estado !== undefined)         push('estado', estado);
+    if (fecha_salida !== undefined) push('fecha_salida', fecha_salida);
+    if (hora_salida !== undefined) push('hora_salida', hora_salida);
+    if (fecha_llegada !== undefined) push('fecha_llegada', fecha_llegada);
+    if (hora_llegada !== undefined) push('hora_llegada', hora_llegada);
+    if (aerolinea_id !== undefined) push('aerolinea_id', aerolinea_id);
+    if (estado !== undefined) push('estado', estado);
+    if (precio !== undefined) push('precio', precio); // Agregar el precio a la actualización
 
     if (fields.length === 0) {
       client.release();
@@ -119,6 +125,7 @@ exports.modificarVuelo = async (req, res) => {
     res.status(500).json({ error: 'Error en el servidor' });
   }
 };
+
 
 // Borrado lógico (estado = 'inactivo')
 exports.eliminarVuelo = async (req, res) => {

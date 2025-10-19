@@ -23,6 +23,7 @@ CREATE TABLE Aerolinea (
 
 SELECT * FROM Aerolinea ORDER BY id_aerolinea ASC;
 
+-- Tabla Ciudades
 CREATE TABLE ciudades (
     ciudad_id SERIAL PRIMARY KEY,
     nombre_ciudad VARCHAR(100) NOT NULL,
@@ -35,6 +36,7 @@ CREATE TABLE ciudades (
 select * from ciudades;
 
 
+-- Tabla Vuelo
 CREATE TABLE Vuelo (
     id_vuelo SERIAL PRIMARY KEY,
     numero_vuelo VARCHAR(100),
@@ -46,6 +48,7 @@ CREATE TABLE Vuelo (
     hora_llegada TIME,
     aerolinea_id INT REFERENCES Aerolinea(id_aerolinea),
 	estado VARCHAR(100) DEFAULT 'activo', -- Estado de usuario (activo o inactivo)
+	precio DECIMAL(10, 2),
     FOREIGN KEY (ciudad_origen) REFERENCES Ciudades(ciudad_id),
     FOREIGN KEY (ciudad_destino) REFERENCES Ciudades(ciudad_id)
 );
