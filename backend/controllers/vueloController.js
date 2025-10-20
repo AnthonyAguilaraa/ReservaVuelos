@@ -147,13 +147,14 @@ exports.eliminarVuelo = async (req, res) => {
   }
 };
 
-// Listar vuelos (con filtros y paginación)
 exports.consultarVuelos = async (req, res) => {
   const {
-    origen,        // ?origen=ID
-    destino,       // ?destino=ID
-    fecha,         // ?fecha=YYYY-MM-DD (salida)
-    estado = 'activo', // por defecto solo activos
+    origen,
+    destino,
+    fecha,
+    aerolinea_id,
+    sortBy,
+    estado = 'activo',
     limit = 50,
     offset = 0,
   } = req.query;
@@ -163,39 +164,51 @@ exports.consultarVuelos = async (req, res) => {
     const values = [];
     let i = 1;
 
-    if (estado) { where.push(`v.estado = $${i}`); values.push(estado); i++; }
-    if (origen) { where.push(`v.ciudad_origen = $${i}`); values.push(origen); i++; }
-    if (destino){ where.push(`v.ciudad_destino = $${i}`); values.push(destino); i++; }
-    if (fecha)  { where.push(`v.fecha_salida = $${i}`); values.push(fecha); i++; }
+    if (estado)       { where.push(`v.estado = $${i++}`);       values.push(estado); }
+    if (origen)       { where.push(`v.ciudad_origen = $${i++}`); values.push(origen); }
+    if (destino)      { where.push(`v.ciudad_destino = $${i++}`);values.push(destino); }
+    if (fecha)        { where.push(`v.fecha_salida = $${i++}`);  values.push(fecha); }
+    if (aerolinea_id) { where.push(`v.aerolinea_id = $${i++}`);  values.push(aerolinea_id); }
 
-    const query = `
-      SELECT
-        v.*,
-        co.nombre_ciudad AS nombre_origen,
-        cd.nombre_ciudad AS nombre_destino,
-        a.nombre_aerolinea
-      FROM Vuelo v
-      LEFT JOIN Ciudades co ON co.ciudad_id = v.ciudad_origen
-      LEFT JOIN Ciudades cd ON cd.ciudad_id = v.ciudad_destino
-      LEFT JOIN Aerolinea a ON a.id_aerolinea = v.aerolinea_id
-      ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
-      ORDER BY v.id_vuelo ASC
-      LIMIT ${Number(limit)} OFFSET ${Number(offset)}
-    `;
+    let orderBy = 'ORDER BY v.id_vuelo ASC';
+    if (sortBy === 'precio_asc') orderBy = 'ORDER BY v.precio ASC';
+    else if (sortBy === 'hora_asc') orderBy = 'ORDER BY v.hora_salida ASC';
+
+    const base = [
+      'SELECT',
+      '  v.*,',
+      '  co.nombre_ciudad AS nombre_origen,',
+      '  cd.nombre_ciudad AS nombre_destino,',
+      '  a.nombre_aerolinea',
+      'FROM Vuelo v',
+      'LEFT JOIN Ciudades co ON co.ciudad_id = v.ciudad_origen',
+      'LEFT JOIN Ciudades cd ON cd.ciudad_id = v.ciudad_destino',
+      'LEFT JOIN Aerolinea a ON a.id_aerolinea = v.aerolinea_id',
+      where.length ? `WHERE ${where.join(' AND ')}` : '',
+      orderBy,
+      `LIMIT $${i++} OFFSET $${i++}`
+    ].filter(Boolean).join(' ');
+
+    values.push(Number(limit), Number(offset));
 
     const client = await pool.connect();
-    const result = await client.query(query, values);
-    client.release();
-
-    res.status(200).json(result.rows);
+    try {
+      // Útil para depurar si vuelve a fallar:
+      // console.log(base, values);
+      const result = await client.query(base, values);
+      res.status(200).json(result.rows);
+    } finally {
+      client.release();
+    }
   } catch (err) {
     console.error('Error en consultarVuelos:', err);
     res.status(500).json({ error: 'Error en el servidor' });
   }
 };
 
+
 // Obtener vuelo por ID
-exports.consultarVueloPorId = async (req, res) => {
+/*exports.consultarVueloPorId = async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -222,4 +235,34 @@ exports.consultarVueloPorId = async (req, res) => {
     console.error('Error en consultarVueloPorId:', err);
     res.status(500).json({ error: 'Error en el servidor' });
   }
+};*/
+
+exports.consultarVueloPorId = async (req, res) => {
+  const { id } = req.params;  // El "id" será ahora el numero_vuelo
+
+  try {
+    const query = `
+      SELECT
+        v.*,
+        co.nombre_ciudad AS nombre_origen,
+        cd.nombre_ciudad AS nombre_destino,
+        a.nombre_aerolinea
+      FROM Vuelo v
+      LEFT JOIN Ciudades co ON co.ciudad_id = v.ciudad_origen
+      LEFT JOIN Ciudades cd ON cd.ciudad_id = v.ciudad_destino
+      LEFT JOIN Aerolinea a ON a.id_aerolinea = v.aerolinea_id
+      WHERE v.numero_vuelo = $1  -- Buscar por numero_vuelo
+    `;
+    const client = await pool.connect();
+    const result = await client.query(query, [id]);
+    client.release();
+
+    if (result.rowCount === 0) return res.status(404).json({ error: 'Vuelo no encontrado' });
+
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error en consultarVueloPorId:', err);
+    res.status(500).json({ error: 'Error en el servidor' });
+  }
 };
+

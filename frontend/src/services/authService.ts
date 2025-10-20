@@ -1,6 +1,5 @@
 // Define la URL base de tu API de backend
-// ¡¡Asegúrate de que coincida con el puerto donde corre tu backend!!
-const API_URL = 'http://localhost:5000/api'; // (¡Ajusta esta URL si es necesario!)
+const API_URL = 'http://localhost:5000/api'; 
 
 /**
  * Inicia sesión llamando al endpoint /login del backend.
