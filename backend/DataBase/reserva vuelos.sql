@@ -86,3 +86,16 @@ VALUES
 (1, 'UIO', 'Aeropuerto Mariscal Sucre', 'Quito'),
 (2, 'GYE', 'Aeropuerto José Joaquín de Olmedo', 'Guayaquil'),
 (3, 'CUE', 'Aeropuerto Mariscal La Mar', 'Cuenca');
+
+
+CREATE TABLE asientos (
+    asiento_id SERIAL PRIMARY KEY,
+    reserva_id INT REFERENCES reservas(reserva_id),
+    numero_asiento VARCHAR(10) NOT NULL, -- Número de asiento (Ej: 1A, 2B, etc.)
+    categoria_asiento VARCHAR(50),  -- Ej: Primera clase, Económica
+    tipo_asiento VARCHAR(20),       -- Tipo de asiento: 'ventanilla', 'pasillo', 'medio'
+    disponible BOOLEAN NOT NULL,     -- Indica si el asiento está disponible o no
+    estado_asiento VARCHAR(20) DEFAULT 'activo',  -- Estado del asiento: 'activo', 'eliminado', etc.
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Fecha en que el asiento fue creado
+    fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Fecha de última actualización
+);
