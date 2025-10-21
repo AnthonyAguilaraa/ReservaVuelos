@@ -1,7 +1,11 @@
 const pool = require('../config/db');
 
-// Crear vuelo
-// Crear vuelo
+// Función de validación para el número de vuelo (Formato específico)
+function validarNumeroVuelo(numero_vuelo) {
+  return /^[A-Za-z0-9-]+$/.test(numero_vuelo);  // Permite letras, números y guiones
+}
+
+// Insertar vuelo
 exports.insertarVuelo = async (req, res) => {
   const {
     numero_vuelo,
@@ -12,37 +16,45 @@ exports.insertarVuelo = async (req, res) => {
     fecha_llegada,
     hora_llegada,
     aerolinea_id,
-    precio,  // Agregar el precio aquí
+    precio
   } = req.body;
 
   try {
     if (!numero_vuelo || !ciudad_origen || !ciudad_destino || !fecha_salida || !hora_salida || !fecha_llegada || !hora_llegada || !aerolinea_id || precio === undefined) {
       return res.status(400).json({ error: 'Faltan campos obligatorios' });
     }
+
+    if (!validarNumeroVuelo(numero_vuelo)) {
+      return res.status(400).json({ error: 'Número de vuelo no válido. Debe contener letras, números y guiones.' });
+    }
+
     if (ciudad_origen === ciudad_destino) {
       return res.status(400).json({ error: 'La ciudad de origen y destino no pueden ser iguales' });
     }
 
     const client = await pool.connect();
 
-    // (Opcional) Validar FKs existan
+    // Validar que las claves foráneas existan (ciudades y aerolínea)
     const fkChecks = await client.query(
       `SELECT
-         (SELECT COUNT(*) FROM Ciudades WHERE ciudad_id = $1) AS existe_origen,
-         (SELECT COUNT(*) FROM Ciudades WHERE ciudad_id = $2) AS existe_destino,
-         (SELECT COUNT(*) FROM Aerolinea WHERE id_aerolinea = $3 AND estado <> 'inactivo') AS existe_aerolinea`,
+         (SELECT COUNT(*) FROM Ciudad WHERE id_ciudad = $1) AS existe_origen,
+         (SELECT COUNT(*) FROM Ciudad WHERE id_ciudad = $2) AS existe_destino,
+         (SELECT COUNT(*) FROM Aerolinea WHERE id_aerolinea = $3 AND id_estado = 1) AS existe_aerolinea`,
       [ciudad_origen, ciudad_destino, aerolinea_id]
     );
+    
     const { existe_origen, existe_destino, existe_aerolinea } = fkChecks.rows[0];
+    
     if (+existe_origen === 0 || +existe_destino === 0 || +existe_aerolinea === 0) {
       client.release();
       return res.status(400).json({ error: 'FK inválida: ciudad_origen, ciudad_destino o aerolinea_id' });
     }
 
+    // Realizar la inserción del vuelo
     const query = `
       INSERT INTO Vuelo
         (numero_vuelo, ciudad_origen, ciudad_destino, fecha_salida, hora_salida, fecha_llegada, hora_llegada, aerolinea_id, precio)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)  -- Suponiendo 1 = 'activo'
       RETURNING id_vuelo
     `;
     const values = [numero_vuelo, ciudad_origen, ciudad_destino, fecha_salida, hora_salida, fecha_llegada, hora_llegada, aerolinea_id, precio];
@@ -57,8 +69,6 @@ exports.insertarVuelo = async (req, res) => {
   }
 };
 
-
-// Modificar vuelo
 // Modificar vuelo
 exports.modificarVuelo = async (req, res) => {
   const {
@@ -72,34 +82,50 @@ exports.modificarVuelo = async (req, res) => {
     hora_llegada,
     aerolinea_id,
     estado, // opcional para cambiar activo/inactivo
-    precio, // agregar el precio aquí
+    precio
   } = req.body;
 
   try {
     if (!id_vuelo) return res.status(400).json({ error: 'id_vuelo es obligatorio' });
+
     if (ciudad_origen && ciudad_destino && ciudad_origen === ciudad_destino) {
       return res.status(400).json({ error: 'La ciudad de origen y destino no pueden ser iguales' });
     }
 
     const client = await pool.connect();
 
-    // Armado dinámico de SET
+    // Validar las claves foráneas antes de realizar la actualización
+    const fkChecks = await client.query(
+      `SELECT
+         (SELECT COUNT(*) FROM Ciudad WHERE id_ciudad = $1) AS existe_origen,
+         (SELECT COUNT(*) FROM Ciudad WHERE id_ciudad = $2) AS existe_destino,
+         (SELECT COUNT(*) FROM Aerolinea WHERE id_aerolinea = $3 AND id_estado = 1) AS existe_aerolinea`,
+      [ciudad_origen, ciudad_destino, aerolinea_id]
+    );
+    const { existe_origen, existe_destino, existe_aerolinea } = fkChecks.rows[0];
+
+    if (+existe_origen === 0 || +existe_destino === 0 || +existe_aerolinea === 0) {
+      client.release();
+      return res.status(400).json({ error: 'FK inválida: ciudad_origen, ciudad_destino o aerolinea_id' });
+    }
+
+    // Armado dinámico de SET para la actualización
     const fields = [];
     const values = [];
     let i = 1;
 
     const push = (col, val) => { fields.push(`${col} = $${i++}`); values.push(val); };
 
-    if (numero_vuelo !== undefined) push('numero_vuelo', numero_vuelo);
-    if (ciudad_origen !== undefined) push('ciudad_origen', ciudad_origen);
-    if (ciudad_destino !== undefined) push('ciudad_destino', ciudad_destino);
-    if (fecha_salida !== undefined) push('fecha_salida', fecha_salida);
-    if (hora_salida !== undefined) push('hora_salida', hora_salida);
-    if (fecha_llegada !== undefined) push('fecha_llegada', fecha_llegada);
-    if (hora_llegada !== undefined) push('hora_llegada', hora_llegada);
-    if (aerolinea_id !== undefined) push('aerolinea_id', aerolinea_id);
-    if (estado !== undefined) push('estado', estado);
-    if (precio !== undefined) push('precio', precio); // Agregar el precio a la actualización
+    if (numero_vuelo) push('numero_vuelo', numero_vuelo);
+    if (ciudad_origen) push('ciudad_origen', ciudad_origen);
+    if (ciudad_destino) push('ciudad_destino', ciudad_destino);
+    if (fecha_salida) push('fecha_salida', fecha_salida);
+    if (hora_salida) push('hora_salida', hora_salida);
+    if (fecha_llegada) push('fecha_llegada', fecha_llegada);
+    if (hora_llegada) push('hora_llegada', hora_llegada);
+    if (aerolinea_id) push('aerolinea_id', aerolinea_id);
+    if (estado) push('id_estado', estado);  // Asumimos 1 = 'activo', 2 = 'inactivo'
+    if (precio !== undefined) push('precio', precio);
 
     if (fields.length === 0) {
       client.release();
@@ -126,14 +152,13 @@ exports.modificarVuelo = async (req, res) => {
   }
 };
 
-
-// Borrado lógico (estado = 'inactivo')
+// Borrado lógico de vuelo (estado = inactivo)
 exports.eliminarVuelo = async (req, res) => {
   const { id } = req.params;
   try {
     const client = await pool.connect();
     const result = await client.query(
-      `UPDATE Vuelo SET estado = 'inactivo' WHERE id_vuelo = $1 RETURNING *`,
+      `UPDATE Vuelo SET id_estado = 2 WHERE id_vuelo = $1 RETURNING *`,  // 2 = 'inactivo'
       [id]
     );
     client.release();
@@ -154,7 +179,7 @@ exports.consultarVuelos = async (req, res) => {
     fecha,
     aerolinea_id,
     sortBy,
-    estado = 'activo',
+    estado = 1,  // Por defecto solo activos
     limit = 50,
     offset = 0,
   } = req.query;
@@ -164,7 +189,7 @@ exports.consultarVuelos = async (req, res) => {
     const values = [];
     let i = 1;
 
-    if (estado)       { where.push(`v.estado = $${i++}`);       values.push(estado); }
+    if (estado)       { where.push(`v.id_estado = $${i++}`);       values.push(estado); }
     if (origen)       { where.push(`v.ciudad_origen = $${i++}`); values.push(origen); }
     if (destino)      { where.push(`v.ciudad_destino = $${i++}`);values.push(destino); }
     if (fecha)        { where.push(`v.fecha_salida = $${i++}`);  values.push(fecha); }
@@ -181,8 +206,8 @@ exports.consultarVuelos = async (req, res) => {
       '  cd.nombre_ciudad AS nombre_destino,',
       '  a.nombre_aerolinea',
       'FROM Vuelo v',
-      'LEFT JOIN Ciudades co ON co.ciudad_id = v.ciudad_origen',
-      'LEFT JOIN Ciudades cd ON cd.ciudad_id = v.ciudad_destino',
+      'LEFT JOIN Ciudad co ON co.id_ciudad = v.ciudad_origen',
+      'LEFT JOIN Ciudad cd ON cd.id_ciudad = v.ciudad_destino',
       'LEFT JOIN Aerolinea a ON a.id_aerolinea = v.aerolinea_id',
       where.length ? `WHERE ${where.join(' AND ')}` : '',
       orderBy,
@@ -219,8 +244,8 @@ exports.consultarVuelos = async (req, res) => {
         cd.nombre_ciudad AS nombre_destino,
         a.nombre_aerolinea
       FROM Vuelo v
-      LEFT JOIN Ciudades co ON co.ciudad_id = v.ciudad_origen
-      LEFT JOIN Ciudades cd ON cd.ciudad_id = v.ciudad_destino
+      LEFT JOIN Ciudad co ON co.id_ciudad = v.ciudad_origen
+      LEFT JOIN Ciudad cd ON cd.id_ciudad = v.ciudad_destino
       LEFT JOIN Aerolinea a ON a.id_aerolinea = v.aerolinea_id
       WHERE v.id_vuelo = $1
     `;
@@ -248,8 +273,8 @@ exports.consultarVueloPorId = async (req, res) => {
         cd.nombre_ciudad AS nombre_destino,
         a.nombre_aerolinea
       FROM Vuelo v
-      LEFT JOIN Ciudades co ON co.ciudad_id = v.ciudad_origen
-      LEFT JOIN Ciudades cd ON cd.ciudad_id = v.ciudad_destino
+      LEFT JOIN Ciudad co ON co.id_ciudad = v.ciudad_origen
+      LEFT JOIN Ciudad cd ON cd.id_ciudad = v.ciudad_destino
       LEFT JOIN Aerolinea a ON a.id_aerolinea = v.aerolinea_id
       WHERE v.numero_vuelo = $1  -- Buscar por numero_vuelo
     `;
