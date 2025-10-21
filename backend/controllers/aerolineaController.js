@@ -61,7 +61,7 @@ exports.eliminarAerolinea = async (req, res) => {
     try {
         // Cambiar el estado a "inactivo" (suponiendo que el ID de "inactivo" es 2)
         const query = 'UPDATE Aerolinea SET id_estado = $1 WHERE id_aerolinea = $2 RETURNING *';
-        const values = [2, id]; // Estado inactivo
+        const values = [6, id]; // Estado inactivo
 
         const client = await pool.connect();
         const result = await client.query(query, values);
