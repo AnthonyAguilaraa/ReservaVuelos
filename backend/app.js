@@ -24,6 +24,7 @@ const vueloRoutes = require('./routes/VueloRoutes');
 const reservasRoutes = require('./routes/ReservasRoutes');
 const reservaVueloRoutes = require('./routes/ReservaVueloRoutes');
 const asientosRoutes = require('./routes/AsientosRoutes');
+const billeteRoutes = require('./routes/BilleteRoutes');
 
 app.use('/api', usuarioRoutes);
 app.use('/api', aerolineaRoutes);
@@ -32,6 +33,7 @@ app.use('/api', vueloRoutes);
 app.use('/api', reservasRoutes);
 app.use('/api', reservaVueloRoutes);
 app.use('/api', asientosRoutes);
+app.use('/api', billeteRoutes);
 
 // Example route
 app.get('/', (req, res) => {

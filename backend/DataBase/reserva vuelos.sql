@@ -99,3 +99,16 @@ CREATE TABLE asientos (
     fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- Fecha en que el asiento fue creado
     fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- Fecha de última actualización
 );
+
+-- Tabla de Billetes
+CREATE TABLE Billete (
+    id_billete SERIAL PRIMARY KEY,                -- Identificador único del billete
+    reserva_id INT REFERENCES reservas(reserva_id), -- Referencia a la reserva
+    asiento_id INT REFERENCES asientos(asiento_id), -- Referencia al asiento reservado
+    precio DECIMAL(10, 2),                         -- Precio del billete (puede ser diferente al precio del vuelo)
+    fecha_compra TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Fecha en que se compró el billete
+    estado_billete VARCHAR(50) DEFAULT 'activo',   -- Estado del billete (ej: 'comprado', 'cancelado')
+    numero_billete VARCHAR(50) UNIQUE NOT NULL,    -- Número único del billete (puede ser generado aleatoriamente o secuencial)
+    metodo_pago VARCHAR(50),                       -- Método de pago utilizado (ej: 'Tarjeta de crédito', 'PayPal')
+    estado_pago VARCHAR(50) DEFAULT 'pendiente'    -- Estado del pago (ej: 'pendiente', 'completado', 'fallido')
+);
