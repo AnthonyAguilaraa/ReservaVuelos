@@ -366,80 +366,91 @@ INSERT INTO Billete (id_reserva, id_asiento, id_metodo_pago, precio, numero_bill
 
 
 --	Horarios de Vuelos. 
-SELECT 
+-- Parámetros de ejemplo:
+-- ciudad_origen_nombre = 'Buenos Aires'
+-- ciudad_destino_nombre = 'Santiago'
+-- fecha_salida = '2025-12-01' (opcional)
+-- aerolinea_nombre = 'LATAM Airlines' (opcional)
+-- solo_directos = true (solo vuelos directos)
+
+SELECT
     v.numero_vuelo,
-    co.nombre_ciudad AS ciudad_origen,
-    cd.nombre_ciudad AS ciudad_destino,
+    c_origen.nombre_ciudad AS ciudad_origen,
+    c_destino.nombre_ciudad AS ciudad_destino,
     v.fecha_salida,
     v.hora_salida,
     v.fecha_llegada,
     v.hora_llegada,
     a.nombre_aerolinea
-FROM 
-    Vuelo v
-JOIN 
-    Ciudad co ON v.ciudad_origen = co.id_ciudad
-JOIN 
-    Ciudad cd ON v.ciudad_destino = cd.id_ciudad
-JOIN 
-    Aerolinea a ON v.aerolinea_id = a.id_aerolinea
-WHERE 
-    v.id_estado = 1 -- Solo vuelos activos
-ORDER BY 
-    v.fecha_salida, v.hora_salida;
+FROM Vuelo v
+JOIN Ciudad c_origen ON v.ciudad_origen = c_origen.id_ciudad
+JOIN Ciudad c_destino ON v.ciudad_destino = c_destino.id_ciudad
+JOIN Aerolinea a ON v.aerolinea_id = a.id_aerolinea
+WHERE c_origen.nombre_ciudad = 'Buenos Aires'
+  AND c_destino.nombre_ciudad = 'Santiago'
+  -- Opcional: Filtrar por fecha
+  AND (v.fecha_salida = '2025-12-01' OR '2025-12-01' IS NULL)
+  -- Opcional: Filtrar por aerolínea
+  AND (a.nombre_aerolinea = 'Aerolíneas Argentinas' OR 'LATAM Airlines' IS NULL)
+  -- En este esquema, todos los vuelos son directos (no hay conexiones registradas), 
+  -- pero si existieran vuelos con conexiones, aquí se agregaría la lógica para filtrar vuelos directos.
+ORDER BY v.hora_salida;
+
 
 
 --	Tarifas de Vuelos.
-SELECT 
+SELECT
     v.numero_vuelo,
-    co.nombre_ciudad AS ciudad_origen,
-    cd.nombre_ciudad AS ciudad_destino,
+    c_origen.nombre_ciudad AS ciudad_origen,
+    c_destino.nombre_ciudad AS ciudad_destino,
     v.fecha_salida,
     v.hora_salida,
-    v.fecha_llegada,
-    v.hora_llegada,
-    v.precio,
-    a.nombre_aerolinea
-FROM 
-    Vuelo v
-JOIN 
-    Ciudad co ON v.ciudad_origen = co.id_ciudad
-JOIN 
-    Ciudad cd ON v.ciudad_destino = cd.id_ciudad
-JOIN 
-    Aerolinea a ON v.aerolinea_id = a.id_aerolinea
-WHERE 
-    v.id_estado = 1 -- Solo vuelos activos
-ORDER BY 
-    v.precio;
+    a.nombre_aerolinea,
+    v.precio
+FROM Vuelo v
+JOIN Ciudad c_origen ON v.ciudad_origen = c_origen.id_ciudad
+JOIN Ciudad c_destino ON v.ciudad_destino = c_destino.id_ciudad
+JOIN Aerolinea a ON v.aerolinea_id = a.id_aerolinea
+WHERE c_origen.nombre_ciudad = 'Buenos Aires'
+  AND c_destino.nombre_ciudad = 'Santiago'
+  -- Opcional: Filtrar por fecha
+  AND (v.fecha_salida = '2025-12-01' OR '2025-12-01' IS NULL)
+  -- Opcional: Filtrar por categoría de asiento
+  -- Aquí se requeriría JOIN con Asiento y Categoria_Asiento si se quiere filtrar o mostrar la categoría
+ORDER BY v.precio ASC;
+
 
 
 --	Información de Vuelo 
-SELECT 
+SELECT
     v.numero_vuelo,
-    co.nombre_ciudad AS ciudad_origen,
-    cd.nombre_ciudad AS ciudad_destino,
+    c_origen.nombre_ciudad AS ciudad_origen,
+    c_destino.nombre_ciudad AS ciudad_destino,
     v.fecha_salida,
     v.hora_salida,
     v.fecha_llegada,
     v.hora_llegada,
-    v.precio,
     a.nombre_aerolinea,
-    e.nombre_estado AS estado_vuelo
-FROM 
-    Vuelo v
-JOIN 
-    Ciudad co ON v.ciudad_origen = co.id_ciudad
-JOIN 
-    Ciudad cd ON v.ciudad_destino = cd.id_ciudad
-JOIN 
-    Aerolinea a ON v.aerolinea_id = a.id_aerolinea
-JOIN 
-	Estado e ON v.id_estado = e.id_estado
-WHERE 
-    v.id_estado = 1 -- Solo vuelos activos
-ORDER BY 
-    v.numero_vuelo;
+    e.nombre_estado AS estado_vuelo,
+    COUNT(a1.id_asiento) AS total_asientos,
+    SUM(CASE WHEN a1.disponible THEN 1 ELSE 0 END) AS asientos_disponibles,
+    -- Para vuelos del mismo día, verificar si está en hora (ejemplo simple: hora actual < hora_salida)
+    CASE 
+        WHEN v.fecha_salida = CURRENT_DATE THEN
+            CASE 
+                WHEN CURRENT_TIME <= v.hora_salida THEN 'En hora'
+                ELSE 'Retrasado'
+            END
+        ELSE 'No aplica'
+    END AS estado_hora
+FROM Vuelo v
+JOIN Ciudad c_origen ON v.ciudad_origen = c_origen.id_ciudad
+JOIN Ciudad c_destino ON v.ciudad_destino = c_destino.id_ciudad
+JOIN Aerolinea a ON v.aerolinea_id = a.id_aerolinea
+JOIN Estado e ON v.id_estado = e.id_estado
+LEFT JOIN Asiento a1 ON a1.id_vuelo = v.id_vuelo
+WHERE v.numero_vuelo = 'AR102' AND v.fecha_salida = '2025-12-01'
+GROUP BY v.numero_vuelo, c_origen.nombre_ciudad, c_destino.nombre_ciudad, v.fecha_salida, v.hora_salida, v.fecha_llegada, v.hora_llegada, a.nombre_aerolinea, e.nombre_estado;
 
 -- ============================
 -- FIN DEL SCRIPT

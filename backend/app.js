@@ -30,7 +30,7 @@ const billeteRoutes = require('./routes/BilleteRoutes');
 
 
 const reservaVueloRoutes = require('./routes/ReservaVueloRoutes');
-const consultavuelosRoutes = require('./routes/ConsultavuelosRoutes');
+//const consultavuelosRoutes = require('./routes/ConsultavuelosRoutes');
 
 
 app.use('/api', usuarioRoutes);
@@ -45,7 +45,7 @@ app.use('/api', billeteRoutes);
 
 
 app.use('/api', reservaVueloRoutes);
-app.use('/api', consultavuelosRoutes);
+//app.use('/api', consultavuelosRoutes);
 
 // Example route
 app.get('/', (req, res) => {
