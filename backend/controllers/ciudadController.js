@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 
-// Helpers de validación simples
+// Helper de validación
 function validarIATA(codigo) {
   if (codigo == null || codigo === '') return true; // opcional
   return typeof codigo === 'string' && /^[A-Za-z]{3}$/.test(codigo);
@@ -15,7 +15,7 @@ exports.insertarCiudad = async (req, res) => {
       return res.status(400).json({ error: 'nombre_ciudad y pais son obligatorios' });
     }
 
-    if (!validarIATA(codigo_iata)) {
+    if (codigo_iata && !validarIATA(codigo_iata)) {
       return res.status(400).json({ error: 'codigo_iata debe tener exactamente 3 letras (ej. MEX, MAD, JFK)' });
     }
 
@@ -23,11 +23,10 @@ exports.insertarCiudad = async (req, res) => {
     if (codigo_iata) codigo_iata = codigo_iata.toUpperCase();
 
     const query = `
-      INSERT INTO ciudades (nombre_ciudad, pais, codigo_iata, zona_horaria)
-      VALUES ($1, $2, $3, $4)
-      RETURNING ciudad_id
+      INSERT INTO Ciudad (nombre_ciudad, pais, codigo_iata, zona_horaria)
+      VALUES ($1, $2, $3, $4) RETURNING id_ciudad
     `;
-    const values = [nombre_ciudad, pais, codigo_iata || null, zona_horaria || null];
+    const values = [nombre_ciudad, pais, codigo_iata || null, zona_horaria || null]; // Asumimos estado activo por defecto
 
     const client = await pool.connect();
     const result = await client.query(query, values);
@@ -35,7 +34,7 @@ exports.insertarCiudad = async (req, res) => {
 
     return res.status(201).json({
       message: 'Ciudad creada exitosamente',
-      id: result.rows[0].ciudad_id
+      id: result.rows[0].id_ciudad
     });
   } catch (err) {
     // Manejo de UNIQUE en codigo_iata
@@ -62,20 +61,21 @@ exports.modificarCiudad = async (req, res) => {
 
     if (codigo_iata) codigo_iata = codigo_iata.toUpperCase();
 
+    // Se usan COALESCE para solo actualizar campos si se proporcionan
     const query = `
-      UPDATE ciudades
-         SET nombre_ciudad = COALESCE($1, nombre_ciudad),
-             pais          = COALESCE($2, pais),
-             codigo_iata   = COALESCE($3, codigo_iata),
-             zona_horaria  = COALESCE($4, zona_horaria),
-             estado        = COALESCE($5, estado)
-       WHERE ciudad_id = $6
-       RETURNING *
+      UPDATE Ciudad
+      SET 
+        nombre_ciudad = COALESCE($1, nombre_ciudad),
+        pais = COALESCE($2, pais),
+        codigo_iata = COALESCE($3, codigo_iata),
+        zona_horaria = COALESCE($4, zona_horaria),
+        id_estado = COALESCE($5, id_estado)
+      WHERE id_ciudad = $6
+      RETURNING *
     `;
     const values = [
       nombre_ciudad ?? null,
       pais ?? null,
-      // Si mandan cadena vacía para limpiar el IATA, guárdalo como null
       (codigo_iata === '' ? null : (codigo_iata ?? null)),
       zona_horaria ?? null,
       estado ?? null,
@@ -105,12 +105,12 @@ exports.eliminarCiudad = async (req, res) => {
   const { id } = req.params;
   try {
     const query = `
-      UPDATE ciudades
-         SET estado = $1
-       WHERE ciudad_id = $2
-       RETURNING *
+      UPDATE Ciudad
+      SET id_estado = $1
+      WHERE id_ciudad = $2
+      RETURNING *
     `;
-    const values = ['inactivo', id];
+    const values = [2, id]; // Suponemos que 2 es el id_estado para "inactivo"
 
     const client = await pool.connect();
     const result = await client.query(query, values);
@@ -127,11 +127,10 @@ exports.eliminarCiudad = async (req, res) => {
   }
 };
 
-
 // Consultar todas las ciudades (ordenadas por id)
 exports.consultarCiudades = async (_req, res) => {
   try {
-    const query = 'SELECT * FROM ciudades ORDER BY ciudad_id ASC';
+    const query = 'SELECT * FROM Ciudad ORDER BY id_ciudad ASC';
 
     const client = await pool.connect();
     const result = await client.query(query);
@@ -148,7 +147,7 @@ exports.consultarCiudades = async (_req, res) => {
 exports.consultarCiudadPorId = async (req, res) => {
   const { id } = req.params;
   try {
-    const query = 'SELECT * FROM ciudades WHERE ciudad_id = $1';
+    const query = 'SELECT * FROM Ciudad WHERE id_ciudad = $1';
     const values = [id];
 
     const client = await pool.connect();
