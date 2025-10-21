@@ -24,8 +24,8 @@ exports.iniciarSesion = async (req, res) => {
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }
 
-        // Generar token
-        const token = jwt.sign({ id: user.id_usuario, correo }, JWT_SECRET, { expiresIn: '2h' });
+        // Generar token con información adicional (estado del usuario)
+        const token = jwt.sign({ id: user.id_usuario, estado: user.id_estado, correo }, JWT_SECRET, { expiresIn: '2h' });
 
         client.release();
         res.status(200).json({ message: 'Autenticación exitosa', token });
@@ -44,7 +44,7 @@ exports.insertarUsuario = async (req, res) => {
         const hashedPassword = await bcrypt.hash(clave, 10);
 
         const query = 'INSERT INTO Usuario (nombre, correo_electronico, contrasena, telefono) VALUES ($1, $2, $3, $4) RETURNING id_usuario';
-        const values = [nombre, correo, hashedPassword, telefono];
+        const values = [nombre, correo, hashedPassword, telefono]; // Default estado activo
 
         const client = await pool.connect();
         const result = await client.query(query, values);
@@ -64,7 +64,7 @@ exports.modificarUsuario = async (req, res) => {
     try {
         const hashedPassword = await bcrypt.hash(clave, 10);
 
-        const query = 'UPDATE Usuario SET nombre = $1, correo_electronico = $2, contrasena = $3, telefono = $4, estado = $5 WHERE id_usuario = $6 RETURNING *';
+        const query = 'UPDATE Usuario SET nombre = $1, correo_electronico = $2, contrasena = $3, telefono = $4, id_estado = $5 WHERE id_usuario = $6 RETURNING *';
         const values = [nombre, correo, hashedPassword, telefono, estado, id_usuario];
 
         const client = await pool.connect();
@@ -82,14 +82,14 @@ exports.modificarUsuario = async (req, res) => {
     }
 };
 
-// Eliminar usuario lógicamente (cambiar estado a 'inactivo')
+// Eliminar usuario lógicamente (actualizar estado)
 exports.eliminarUsuario = async (req, res) => {
     const { id } = req.params;
 
     try {
-        // Actualizar el estado del usuario a 'inactivo'
-        const query = 'UPDATE Usuario SET estado = $1 WHERE id_usuario = $2 RETURNING *';
-        const values = ['inactivo', id];
+        // Actualizar el estado del usuario a 'inactivo' (en base de datos sería el ID correspondiente a "inactivo")
+        const query = 'UPDATE Usuario SET id_estado = $1 WHERE id_usuario = $2 RETURNING *';
+        const values = [6, id]; // Suponiendo que el estado "inactivo" tiene el ID 2
 
         const client = await pool.connect();
         const result = await client.query(query, values);
@@ -106,11 +106,10 @@ exports.eliminarUsuario = async (req, res) => {
     }
 };
 
-
 // Consultar todos los usuarios
 exports.consultarUsuarios = async (req, res) => {
     try {
-        const query = 'SELECT id_usuario, nombre, correo_electronico, telefono, fecha_registro, estado FROM Usuario ORDER BY id_usuario ASC';
+        const query = 'SELECT id_usuario, nombre, correo_electronico, telefono, fecha_registro, id_estado FROM Usuario ORDER BY id_usuario ASC';
 
         const client = await pool.connect();
         const result = await client.query(query);
@@ -128,7 +127,7 @@ exports.consultarUsuarioPorId = async (req, res) => {
     const { id } = req.params;
 
     try {
-        const query = 'SELECT id_usuario, nombre, correo_electronico, telefono, fecha_registro,estado FROM Usuario WHERE id_usuario = $1 ORDER BY id_usuario ASC';
+        const query = 'SELECT id_usuario, nombre, correo_electronico, telefono, fecha_registro, id_estado FROM Usuario WHERE id_usuario = $1';
         const values = [id];
 
         const client = await pool.connect();
