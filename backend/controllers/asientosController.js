@@ -78,21 +78,23 @@ exports.eliminarAsiento = async (req, res) => {
 
 // Consultar todos los asientos de un vuelo
 exports.consultarAsientos = async (req, res) => {
-    const { id_vuelo } = req.params;
+    const { id_vuelo } = req.params;
 
-    try {
-        const query = 'SELECT * FROM Asiento WHERE id_vuelo = $1 ORDER BY numero_asiento';
-        const values = [id_vuelo];
+    try {
+        // Se añaden las condiciones AND disponible = TRUE y id_estado = 1
+        const query = 'SELECT * FROM Asiento WHERE id_vuelo = $1 AND disponible = TRUE AND id_estado = 1 ORDER BY numero_asiento';
+        const values = [id_vuelo];
 
-        const client = await pool.connect();
-        const result = await client.query(query, values);
-        client.release();
+        const client = await pool.connect();
+        const result = await client.query(query, values);
+        client.release();
 
-        res.status(200).json(result.rows);
-    } catch (err) {
-        console.error('Error en consultarAsientos:', err);
-        res.status(500).json({ error: 'Error en el servidor' });
-    }
+        // Si no hay asientos disponibles, devolvemos un array vacío (lo cual es correcto)
+        res.status(200).json(result.rows);
+    } catch (err) {
+        console.error('Error en consultarAsientos:', err);
+        res.status(500).json({ error: 'Error en el servidor' });
+    }
 };
 
 // Consultar Asiento por ID

@@ -337,6 +337,13 @@ INSERT INTO Asiento (id_vuelo, numero_asiento, id_categoria, id_tipo) VALUES
 (9, '9A', 3, 3), (9, '9B', 2, 2), -- Asientos para el vuelo AA1000
 (10, '10A', 1, 1), (10, '10B', 2, 2); -- Asientos para el vuelo LH1100
 
+-- Asientos para el vuelo LA200
+INSERT INTO Asiento (id_vuelo, numero_asiento, id_categoria, id_tipo) VALUES
+(2, '2B', 3, 3), (2, '2C', 3, 2), (2, '2D', 3, 2), (2, '2E', 3, 3), (2, '2F', 3, 1),
+(2, '3A', 3, 1), (2, '3B', 3, 3), (2, '3C', 3, 2), (2, '3D', 3, 2), (2, '3E', 3, 3), (2, '3F', 3, 1),
+(2, '4A', 2, 1), (2, '4B', 2, 3), (2, '4C', 2, 2), (2, '4D', 2, 2), (2, '4E', 2, 3), (2, '4F', 2, 1),
+(2, '5A', 2, 1), (2, '5B', 2, 3);
+
 -- ============================
 -- 14. Billete
 -- ============================

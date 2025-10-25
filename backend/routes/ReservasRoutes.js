@@ -9,5 +9,6 @@ router.put('/reserva', authenticateToken, reservasController.modificarReserva); 
 router.delete('/reserva/:id', authenticateToken, reservasController.eliminarReserva); // Eliminar Reserva (cambiar estado)
 router.get('/reservas', authenticateToken, reservasController.consultarReservas); // Consultar todas las Reservas
 router.get('/reserva/:id', authenticateToken, reservasController.consultarReservaPorId); // Consultar Reserva por ID
+router.post('/reserva/completa', authenticateToken, reservasController.crearReservaCompleta);
 
 module.exports = router;

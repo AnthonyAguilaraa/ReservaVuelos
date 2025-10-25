@@ -1,9 +1,8 @@
-// src/pages/dashboard.ts
-
 // Asumimos que tienes un authService para manejar el logout
 import { cerrarSesion } from '../services/authService'; 
 // Importamos el módulo que acabamos de crear
 import { renderConsultaVuelos } from './consultaVuelos';
+import { renderReservaVuelos } from './reservaVuelos';
 
 export function renderDashboard(container: HTMLDivElement) {
     container.innerHTML = `
@@ -73,11 +72,20 @@ export function renderDashboard(container: HTMLDivElement) {
     });
 
     // --- Placeholders para otros módulos ---
-    container.querySelector('#btn-reserva')?.addEventListener('click', () => {
+    /*container.querySelector('#btn-reserva')?.addEventListener('click', () => {
         document.querySelectorAll('nav button').forEach(btn => btn.classList.replace('bg-blue-100', 'bg-gray-100'));
         container.querySelector('#btn-reserva')?.classList.replace('bg-gray-100', 'bg-blue-100');
         contentArea.innerHTML = `<p class="text-center text-gray-600 p-4 bg-gray-50 rounded">Módulo 'Reserva de vuelos' (próximamente).</p>`;
-    });
+    });*/
+
+    container.querySelector('#btn-reserva')?.addEventListener('click', () => {
+        // Resaltar botón activo (opcional)
+        document.querySelectorAll('nav button').forEach(btn => btn.classList.replace('bg-blue-100', 'bg-gray-100'));
+        container.querySelector('#btn-reserva')?.classList.replace('bg-gray-100', 'bg-blue-100');
+        
+        contentArea.innerHTML = ''; // Limpiar área
+        renderReservaVuelos(contentArea); // Llamar al nuevo módulo
+ });
 
     container.querySelector('#btn-compra')?.addEventListener('click', () => {
         document.querySelectorAll('nav button').forEach(btn => btn.classList.replace('bg-blue-100', 'bg-gray-100'));

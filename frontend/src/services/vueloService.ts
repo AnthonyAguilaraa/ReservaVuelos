@@ -163,3 +163,31 @@ export async function deleteVueloByNumeroVuelo(numero_vuelo: string) {
         return { success: false, message: (error as Error).message };
     }
 }
+
+export async function getAsientosDisponibles(id_vuelo: number) {
+    try {
+        const headers = getAuthHeaders();
+        if (!headers['Authorization']?.includes('Bearer')) {
+            return { success: false, message: 'No autorizado' };
+        }
+
+        const response = await fetch(`${API_URL}/asientos/${id_vuelo}`, {
+            method: 'GET',
+            headers: headers
+        });
+
+        const data = await handleResponse(response); // Asumiendo que tienes handleResponse
+        
+        // Si no, usa esto:
+        // const data = await response.json();
+        // if (!response.ok) {
+        //     throw new Error(data.error || 'Error al cargar asientos');
+        // }
+
+        return { success: true, data: data }; // data será un array de asientos
+
+    } catch (error) {
+        console.error('Error en vueloService.getAsientosDisponibles:', error);
+        return { success: false, message: (error as Error).message };
+    }
+}
