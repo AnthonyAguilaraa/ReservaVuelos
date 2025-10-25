@@ -137,31 +137,25 @@ exports.consultarReservaPorId = async (req, res) => {
 
 exports.crearReservaCompleta = async (req, res) => {
     // 1. Datos que el frontend envía (Body)
+    // Nota: 'asientos' se ha eliminado de aquí
     const {
-        // 'usuario_id' YA NO SE LEE DE AQUÍ
         vuelos,       // Array de IDs de vuelo. Ej: [101]
-        pasajeros,    // Array de objetos de pasajeros. Ej: [{nombre: "Ana", ...}, {nombre: "Juan", ...}]
-        asientos      // Array de IDs de asiento. Ej: [20, 21]
+        pasajeros     // Array de objetos de pasajeros. Ej: [{nombre: "Ana", ...}]
     } = req.body;
 
-    // --- INICIO DE LA CORRECCIÓN ---
     // 1.b. Obtener el 'usuario_id' desde el token (middleware)
-    // Asumo que tu middleware 'authenticateToken' añade el objeto 'req.user'
-    // AVISA: ajusta 'req.user.id_usuario' si tu token lo guarda con otro nombre (ej: req.user.id)
-    const usuario_id = req.user.id; 
+    const usuario_id = req.user.id; // Confirmado que usas 'req.user.id'
 
     if (!usuario_id) {
         return res.status(403).json({ error: 'Token inválido o no se pudo identificar al usuario.' });
     }
-    // --- FIN DE LA CORRECCIÓN ---
 
-
-    // 2. Validar que los datos coincidan
-    if (!pasajeros || !asientos || pasajeros.length !== asientos.length) {
-        return res.status(400).json({ error: 'El número de pasajeros no coincide con el número de asientos.' });
-    }
-    if (pasajeros.length === 0) {
+    // 2. Validar que los datos existan
+    if (!pasajeros || pasajeros.length === 0) {
         return res.status(400).json({ error: 'Debe haber al menos un pasajero.' });
+    }
+    if (!vuelos || vuelos.length === 0) {
+        return res.status(400).json({ error: 'Debe seleccionar al menos un vuelo.' });
     }
 
     const client = await pool.connect();
@@ -174,7 +168,7 @@ exports.crearReservaCompleta = async (req, res) => {
         const idsPasajeros = [];
         for (const pasajero of pasajeros) {
             const pasajeroQuery = 'INSERT INTO Pasajero (nombre, apellido, documento_identidad, fecha_nacimiento, usuario_id) VALUES ($1, $2, $3, $4, $5) RETURNING id_pasajero';
-            // Usamos el 'usuario_id' del token como el creador (opcional pero bueno)
+            // Usamos el 'usuario_id' del token como el creador
             const pasajeroValues = [pasajero.nombre, pasajero.apellido, pasajero.documento_identidad, pasajero.fecha_nacimiento, usuario_id];
             const result = await client.query(pasajeroQuery, pasajeroValues);
             idsPasajeros.push(result.rows[0].id_pasajero);
@@ -182,9 +176,7 @@ exports.crearReservaCompleta = async (req, res) => {
 
         // 5. Crear la Reserva (encabezado)
         const reservaQuery = 'INSERT INTO Reserva (usuario_id, num_pasajeros) VALUES ($1, $2) RETURNING id_reserva';
-        
-        // --- CORRECCIÓN ---
-        // Usamos el 'usuario_id' extraído del token
+        // El 'id_estado_reserva' usará el DEFAULT 2 (pendiente)
         const reservaResult = await client.query(reservaQuery, [usuario_id, pasajeros.length]);
         const newReservaId = reservaResult.rows[0].id_reserva;
 
@@ -200,16 +192,6 @@ exports.crearReservaCompleta = async (req, res) => {
             await client.query(rpQuery, [newReservaId, pasajeroId]);
         }
 
-        // 8. Ocupar los Asientos (Marcar como no disponibles)
-        for (const asientoId of asientos) {
-            const asientoQuery = 'UPDATE Asiento SET disponible = FALSE WHERE id_asiento = $1 AND disponible = TRUE RETURNING id_asiento';
-            const asientoResult = await client.query(asientoQuery, [asientoId]);
-            
-            if (asientoResult.rowCount === 0) {
-                throw new Error(`El asiento ID ${asientoId} ya no está disponible.`);
-            }
-        }
-
         // 9. ¡ÉXITO! Confirmar la transacción
         await client.query('COMMIT');
         res.status(201).json({ message: 'Reserva creada exitosamente', id_reserva: newReservaId });
@@ -221,5 +203,43 @@ exports.crearReservaCompleta = async (req, res) => {
         res.status(500).json({ error: 'Error al crear la reserva', details: err.message });
     } finally {
         client.release();
+    }
+};
+
+exports.consultarMisReservas = async (req, res) => {
+    // Obtenemos el id del usuario desde el token
+    const usuario_id = req.user.id; 
+    
+    // Asumimos que el estado 2 = 'reservado' (pendiente de pago)
+    const ID_ESTADO_PENDIENTE = 2; 
+
+    try {
+        const query = `
+            SELECT 
+                r.id_reserva, r.num_pasajeros, r.fecha_reserva,
+                v.id_vuelo, v.numero_vuelo, v.precio,
+                c1.nombre_ciudad AS origen, 
+                c2.nombre_ciudad AS destino,
+                a.nombre_aerolinea
+            FROM Reserva r
+            JOIN Reserva_Vuelo rv ON r.id_reserva = rv.id_reserva
+            JOIN Vuelo v ON rv.id_vuelo = v.id_vuelo
+            JOIN Ciudad c1 ON v.ciudad_origen = c1.id_ciudad
+            JOIN Ciudad c2 ON v.ciudad_destino = c2.id_ciudad
+            JOIN Aerolinea a ON v.aerolinea_id = a.id_aerolinea
+            WHERE 
+                r.usuario_id = $1 AND r.id_estado_reserva = $2
+            ORDER BY r.fecha_reserva DESC;
+        `;
+        
+        const client = await pool.connect();
+        const result = await client.query(query, [usuario_id, ID_ESTADO_PENDIENTE]);
+        client.release();
+        
+        res.status(200).json(result.rows);
+        
+    } catch (err) {
+        console.error('Error en consultarMisReservas:', err);
+        res.status(500).json({ error: 'Error en el servidor' });
     }
 };

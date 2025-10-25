@@ -10,5 +10,6 @@ router.delete('/reserva/:id', authenticateToken, reservasController.eliminarRese
 router.get('/reservas', authenticateToken, reservasController.consultarReservas); // Consultar todas las Reservas
 router.get('/reserva/:id', authenticateToken, reservasController.consultarReservaPorId); // Consultar Reserva por ID
 router.post('/reserva/completa', authenticateToken, reservasController.crearReservaCompleta);
+router.get('/reservas/mis-reservas', authenticateToken, reservasController.consultarMisReservas);
 
 module.exports = router;

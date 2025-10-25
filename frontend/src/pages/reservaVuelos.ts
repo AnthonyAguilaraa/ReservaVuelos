@@ -1,16 +1,15 @@
 // src/pages/reservaVuelos.ts
 
 import { getCiudades, getAerolineas } from '../services/catalogService';
-import { buscarVuelos, getAsientosDisponibles } from '../services/vueloService';
+// 'getAsientosDisponibles' YA NO SE USA AQUÍ
+import { buscarVuelos } from '../services/vueloService';
 import { crearReservaCompleta } from '../services/reservaService';
 
 // --- Estado del Módulo ---
-// Guardaremos el estado del wizard en este objeto
 let wizardState = {
     selectedVuelo: null as any | null,
     pasajeros: [] as any[],
-    selectedAsientos: [] as any[],
-    disponibles: [] as any[], // Caché de asientos disponibles
+    // 'selectedAsientos' y 'disponibles' ya no se necesitan aquí
 };
 
 // --- Cache de Catálogos ---
@@ -19,18 +18,14 @@ let aerolineasCache: any[] = [];
 
 /**
  * Punto de entrada principal para el módulo de Reservas.
- * Inicia en el Paso 1: Búsqueda.
  */
 export async function renderReservaVuelos(container: HTMLDivElement) {
-    // Reseteamos el estado cada vez que se carga el módulo
+    // Reseteamos el estado
     wizardState = {
         selectedVuelo: null,
         pasajeros: [],
-        selectedAsientos: [],
-        disponibles: [],
     };
     
-    // Cargar catálogos
     container.innerHTML = `<p class="text-center text-gray-600">Cargando catálogos...</p>`;
     if (ciudadesCache.length === 0) {
         ciudadesCache = await getCiudades();
@@ -44,7 +39,7 @@ export async function renderReservaVuelos(container: HTMLDivElement) {
 }
 
 // ----------------------------------------------------------------
-// --- PASO 1: BÚSQUEDA DE VUELOS ---
+// --- PASO 1: BÚSQUEDA DE VUELOS (Sin cambios) ---
 // ----------------------------------------------------------------
 function renderStepSearch(container: HTMLDivElement) {
     const opcionesCiudades = ciudadesCache.map(c => `<option value="${c.id_ciudad}">${c.nombre_ciudad}</option>`).join('');
@@ -85,7 +80,7 @@ function renderStepSearch(container: HTMLDivElement) {
             origen: (form.querySelector<HTMLSelectElement>('#origen')!).value,
             destino: (form.querySelector<HTMLSelectElement>('#destino')!).value,
             fecha: (form.querySelector<HTMLInputElement>('#fecha')!).value,
-            sortBy: 'precio_asc' // Forzamos orden por precio
+            sortBy: 'precio_asc'
         };
 
         if (params.origen === params.destino) {
@@ -96,7 +91,6 @@ function renderStepSearch(container: HTMLDivElement) {
         const result = await buscarVuelos(params);
         
         if (result.success && result.data.length > 0) {
-            // Renderizar resultados con un botón "Seleccionar"
             resultsDiv.innerHTML = result.data.map((v: any) => `
                 <div class="bg-white shadow p-4 mb-3 rounded-lg flex justify-between items-center">
                     <div>
@@ -113,7 +107,6 @@ function renderStepSearch(container: HTMLDivElement) {
                 </div>
             `).join('');
             
-            // Añadir listeners a los botones "Seleccionar"
             resultsDiv.querySelectorAll('.btn-select-vuelo').forEach(button => {
                 button.addEventListener('click', (ev) => {
                     const vueloData = JSON.parse((ev.currentTarget as HTMLElement).dataset.vueloJson!);
@@ -131,7 +124,7 @@ function renderStepSearch(container: HTMLDivElement) {
 }
 
 // ----------------------------------------------------------------
-// --- PASO 2: AÑADIR PASAJEROS ---
+// --- PASO 2: AÑADIR PASAJEROS (Modificado) ---
 // ----------------------------------------------------------------
 function renderStepPassengers(container: HTMLDivElement) {
     container.innerHTML = `
@@ -171,10 +164,10 @@ function renderStepPassengers(container: HTMLDivElement) {
         <h3 class="text-xl font-semibold mt-6 mb-2">Pasajeros (${wizardState.pasajeros.length})</h3>
         <div id="pasajeros-list" class="mb-6">
             ${wizardState.pasajeros.length === 0 ? '<p class="text-gray-500">Añada al menos un pasajero.</p>' : ''}
-            </div>
+        </div>
 
         <button id="btn-goto-step3" class="w-full bg-green-600 text-white py-3 px-4 text-lg rounded ...">
-            Siguiente: Seleccionar Asientos
+            Siguiente: Revisar Reserva
         </button>
     `;
 
@@ -193,7 +186,6 @@ function renderStepPassengers(container: HTMLDivElement) {
             `).join('');
         }
         
-        // Activar/Desactivar botón "Siguiente"
         const nextButton = container.querySelector<HTMLButtonElement>('#btn-goto-step3')!;
         nextButton.disabled = wizardState.pasajeros.length === 0;
         nextButton.style.opacity = nextButton.disabled ? '0.5' : '1';
@@ -233,118 +225,21 @@ function renderStepPassengers(container: HTMLDivElement) {
     // Listener para botón "Siguiente"
     container.querySelector('#btn-goto-step3')!.addEventListener('click', () => {
         if (wizardState.pasajeros.length > 0) {
-            renderStepSeats(container); // Avanzar al Paso 3
+            // --- CORRECCIÓN ---
+            renderStepReview(container); // Avanzar al Paso 3 (Revisar)
         }
     });
 }
 
 
 // ----------------------------------------------------------------
-// --- PASO 3: SELECCIONAR ASIENTOS ---
+// --- PASO 3: SELECCIONAR ASIENTOS (ELIMINADO) ---
 // ----------------------------------------------------------------
-async function renderStepSeats(container: HTMLDivElement) {
-    container.innerHTML = `
-        <button id="btn-back-step2" class="mb-4 text-blue-600 hover:underline">&larr; Volver a Pasajeros</button>
-        <h2 class="text-2xl font-bold mb-4">Paso 3: Seleccionar Asientos</h2>
-        
-        <div class="bg-blue-50 p-4 rounded-lg mb-4">
-            <p><strong>Vuelo:</strong> ${wizardState.selectedVuelo.numero_vuelo}</p>
-            <p>Debe seleccionar <strong>${wizardState.pasajeros.length}</strong> asiento(s).</p>
-        </div>
-
-        <div id="asientos-loading" class="text-center">Cargando asientos disponibles...</div>
-        <div id="asientos-grid" class="grid grid-cols-6 gap-2 p-4 bg-gray-100 rounded-lg hidden">
-            </div>
-
-        <button id="btn-goto-step4" class="w-full bg-green-600 text-white py-3 px-4 text-lg rounded mt-6">
-            Siguiente: Revisar Reserva
-        </button>
-    `;
-
-    // Resetear asientos seleccionados si vuelven
-    wizardState.selectedAsientos = []; 
-
-    const loadingDiv = container.querySelector<HTMLDivElement>('#asientos-loading')!;
-    const gridDiv = container.querySelector<HTMLDivElement>('#asientos-grid')!;
-    const nextButton = container.querySelector<HTMLButtonElement>('#btn-goto-step4')!;
-    
-    // Función para actualizar estado del botón "Siguiente"
-    const updateNextButtonState = () => {
-        const needed = wizardState.pasajeros.length;
-        const selected = wizardState.selectedAsientos.length;
-        nextButton.disabled = selected !== needed;
-        nextButton.style.opacity = nextButton.disabled ? '0.5' : '1';
-        nextButton.textContent = `Siguiente: Revisar Reserva (${selected}/${needed})`;
-    };
-
-    updateNextButtonState();
-
-    // Listener para volver
-    container.querySelector('#btn-back-step2')!.addEventListener('click', () => {
-        renderStepPassengers(container); // Vuelve al paso 2
-    });
-    
-    // Listener para "Siguiente"
-    container.querySelector('#btn-goto-step4')!.addEventListener('click', () => {
-        if (wizardState.selectedAsientos.length === wizardState.pasajeros.length) {
-            renderStepReview(container); // Avanzar al Paso 4
-        }
-    });
-
-    // Cargar asientos
-    const result = await getAsientosDisponibles(wizardState.selectedVuelo.id_vuelo);
-    loadingDiv.classList.add('hidden');
-
-    if (result.success && result.data.length > 0) {
-        gridDiv.classList.remove('hidden');
-        wizardState.disponibles = result.data; // Guardar en caché
-
-        gridDiv.innerHTML = wizardState.disponibles.map(asiento => `
-            <button class="btn-select-asiento p-3 bg-white border border-gray-300 rounded text-center hover:bg-blue-100" 
-                    data-asiento-id="${asiento.id_asiento}">
-                ${asiento.numero_asiento}
-            </button>
-        `).join('');
-
-        // Listeners para botones de asiento
-        gridDiv.querySelectorAll('.btn-select-asiento').forEach(button => {
-            button.addEventListener('click', (e) => {
-                const btn = e.currentTarget as HTMLButtonElement;
-                const asientoId = parseInt(btn.dataset.asientoId!);
-                const asiento = wizardState.disponibles.find(a => a.id_asiento === asientoId);
-                const isSelected = wizardState.selectedAsientos.some(a => a.id_asiento === asientoId);
-                
-                if (isSelected) {
-                    // Des-seleccionar
-                    wizardState.selectedAsientos = wizardState.selectedAsientos.filter(a => a.id_asiento !== asientoId);
-                    btn.classList.remove('bg-blue-600', 'text-white');
-                    btn.classList.add('bg-white');
-                } else {
-                    // Seleccionar, si no hemos alcanzado el límite
-                    if (wizardState.selectedAsientos.length < wizardState.pasajeros.length) {
-                        wizardState.selectedAsientos.push(asiento);
-                        btn.classList.add('bg-blue-600', 'text-white');
-                        btn.classList.remove('bg-white');
-                    } else {
-                        alert(`Ya ha seleccionado el máximo de ${wizardState.pasajeros.length} asientos.`);
-                    }
-                }
-                updateNextButtonState();
-            });
-        });
-
-    } else if (result.success) {
-        gridDiv.innerHTML = `<p class="col-span-6 text-center text-red-500">No hay asientos disponibles para este vuelo.</p>`;
-        gridDiv.classList.remove('hidden');
-    } else {
-        gridDiv.innerHTML = `<p class="col-span-6 text-center text-red-500">${result.message}</p>`;
-        gridDiv.classList.remove('hidden');
-    }
-}
+// La función 'renderStepSeats' se elimina completamente de este archivo.
 
 
 // ----------------------------------------------------------------
-// --- PASO 4: REVISAR Y CONFIRMAR ---
+// --- PASO 3: REVISAR Y CONFIRMAR (Antes Paso 4) (Modificado) ---
 // ----------------------------------------------------------------
 function renderStepReview(container: HTMLDivElement) {
     const vuelo = wizardState.selectedVuelo;
@@ -353,8 +248,8 @@ function renderStepReview(container: HTMLDivElement) {
     const precioTotal = (precioUnitario * numPasajeros).toFixed(2);
 
     container.innerHTML = `
-        <button id="btn-back-step3" class="mb-4 text-blue-600 hover:underline">&larr; Volver a Asientos</button>
-        <h2 class="text-2xl font-bold mb-4">Paso 4: Revisar y Confirmar</h2>
+        <button id="btn-back-step2" class="mb-4 text-blue-600 hover:underline">&larr; Volver a Pasajeros</button>
+        <h2 class="text-2xl font-bold mb-4">Paso 3: Revisar y Confirmar</h2>
 
         <div class="bg-white shadow-lg rounded-lg p-6">
             <div class="border-b pb-4 mb-4">
@@ -371,7 +266,6 @@ function renderStepReview(container: HTMLDivElement) {
                     ${wizardState.pasajeros.map((p, index) => `
                         <li>
                             <strong>${p.nombre} ${p.apellido}</strong> 
-                            (Asiento: ${wizardState.selectedAsientos[index]?.numero_asiento || 'N/A'})
                         </li>
                     `).join('')}
                 </ul>
@@ -391,11 +285,11 @@ function renderStepReview(container: HTMLDivElement) {
     `;
 
     // Listener para volver
-    container.querySelector('#btn-back-step3')!.addEventListener('click', () => {
-        renderStepSeats(container); // Vuelve al paso 3
+    container.querySelector('#btn-back-step2')!.addEventListener('click', () => {
+        // --- CORRECCIÓN ---
+        renderStepPassengers(container); // Vuelve al paso 2
     });
 
-    // Listener para Confirmar
     // Listener para Confirmar
     container.querySelector('#btn-confirmar-reserva')!.addEventListener('click', async (e) => {
         const btn = e.currentTarget as HTMLButtonElement;
@@ -403,13 +297,14 @@ function renderStepReview(container: HTMLDivElement) {
         
         btn.disabled = true;
         btn.textContent = 'Procesando...';
-        errorEl.textContent = ''; // Limpiar errores previos
+        errorEl.textContent = '';
 
-        // ... (definición del payload) ...
+        // --- CORRECCIÓN ---
+        // El payload ya no incluye el array de 'asientos'
         const payload = {
-            vuelos: [wizardState.selectedVuelo.id_vuelo],
+            vuelos: [Number(wizardState.selectedVuelo.id_vuelo)],
             pasajeros: wizardState.pasajeros,
-            asientos: wizardState.selectedAsientos.map(a => a.id_asiento)
+            asientos: [] as number[] // <-- añadir para satisfacer la firma
         };
 
         const result = await crearReservaCompleta(payload);
@@ -425,7 +320,7 @@ function renderStepReview(container: HTMLDivElement) {
 }
 
 // ----------------------------------------------------------------
-// --- PASO 5: ÉXITO ---
+// --- PASO 4: ÉXITO (Antes Paso 5) ---
 // ----------------------------------------------------------------
 function renderStepSuccess(container: HTMLDivElement, id_reserva: number) {
     container.innerHTML = `
@@ -437,7 +332,7 @@ function renderStepSuccess(container: HTMLDivElement, id_reserva: number) {
                 <strong class="text-2xl text-black">${id_reserva}</strong>
             </p>
             
-            <p class="mt-6">El siguiente paso es proceder a la Compra de Billetes.</p>
+            <p class="mt-6">El siguiente paso es proceder a la <strong>Compra de Billetes</strong> para seleccionar asientos y pagar.</p>
 
             <button id="btn-nueva-reserva" class="bg-blue-600 text-white py-2 px-6 rounded mt-8">
                 Hacer otra reserva
