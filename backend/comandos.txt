@@ -1,0 +1,17 @@
+
+Comandos para el Backend
+
+npm install 
+
+npm install --save-dev nodemon
+
+npm install express pg jsonwebtoken dotenv
+
+npm run dev
+
+
+Comandos Frontend
+
+npm install 
+
+npm install uuid
