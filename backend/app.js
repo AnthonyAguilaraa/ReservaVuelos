@@ -25,6 +25,7 @@ const reservasRoutes = require('./routes/ReservasRoutes');
 const pasajeroRoutes = require('./routes/PasajeroRoutes');
 const asientosRoutes = require('./routes/AsientosRoutes');
 const billeteRoutes = require('./routes/BilleteRoutes');
+const metodoPagoRoutes = require('./routes/MetodoPagoRoutes');
 
 
 
@@ -41,6 +42,7 @@ app.use('/api', reservasRoutes);
 app.use('/api', pasajeroRoutes);
 app.use('/api', asientosRoutes);
 app.use('/api', billeteRoutes);
+app.use('/api', metodoPagoRoutes);
 
 
 

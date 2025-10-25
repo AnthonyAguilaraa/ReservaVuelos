@@ -9,5 +9,5 @@ router.put('/billete', authenticateToken, billeteController.modificarBillete); /
 router.delete('/billete/:id', authenticateToken, billeteController.eliminarBillete); // Eliminar Billete
 router.get('/billetes', authenticateToken, billeteController.consultarBilletes); // Consultar todos los Billetes
 router.get('/billete/:id', authenticateToken, billeteController.consultarBilletePorId); // Consultar Billete por ID
-
+router.post('/billete/comprar', authenticateToken, billeteController.comprarBilletes); // Comprar Billetes
 module.exports = router;

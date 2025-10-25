@@ -3,6 +3,7 @@ import { cerrarSesion } from '../services/authService';
 // Importamos el módulo que acabamos de crear
 import { renderConsultaVuelos } from './consultaVuelos';
 import { renderReservaVuelos } from './reservaVuelos';
+import { renderCompraBilletes } from './compraBilletes';
 
 export function renderDashboard(container: HTMLDivElement) {
     container.innerHTML = `
@@ -83,7 +84,9 @@ export function renderDashboard(container: HTMLDivElement) {
     container.querySelector('#btn-compra')?.addEventListener('click', () => {
         document.querySelectorAll('nav button').forEach(btn => btn.classList.replace('bg-blue-100', 'bg-gray-100'));
         container.querySelector('#btn-compra')?.classList.replace('bg-gray-100', 'bg-blue-100');
-        contentArea.innerHTML = `<p class="text-center text-gray-600 p-4 bg-gray-50 rounded">Módulo 'Compra de billetes' (próximamente).</p>`;
+        
+        contentArea.innerHTML = '';
+        renderCompraBilletes(contentArea); // Llamar al nuevo módulo
     });
 
     container.querySelector('#btn-perfil')?.addEventListener('click', () => {

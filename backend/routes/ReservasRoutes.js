@@ -11,5 +11,6 @@ router.get('/reservas', authenticateToken, reservasController.consultarReservas)
 router.get('/reserva/:id', authenticateToken, reservasController.consultarReservaPorId); // Consultar Reserva por ID
 router.post('/reserva/completa', authenticateToken, reservasController.crearReservaCompleta);
 router.get('/reservas/mis-reservas', authenticateToken, reservasController.consultarMisReservas);
+router.get('/reservas/mis-reservas', authenticateToken, reservasController.consultarMisReservas);
 
 module.exports = router;

@@ -1,4 +1,5 @@
 const pool = require('../config/db');
+const { v4: uuidv4 } = require('uuid');
 
 // Insertar Billete
 exports.insertarBillete = async (req, res) => {
@@ -168,6 +169,95 @@ exports.consultarBilletePorId = async (req, res) => {
     } catch (err) {
         console.error('Error en consultarBilletePorId:', err);
         res.status(500).json({ error: 'Error en el servidor' });
+    }
+};
+
+exports.comprarBilletes = async (req, res) => {
+    // Datos que el frontend debe enviar
+    const {
+        id_reserva,
+        id_metodo_pago,
+        asientos // Array de IDs de asiento [101, 102]
+    } = req.body;
+    
+    // Obtenemos el id del usuario desde el token
+    const usuario_id = req.user.id; 
+
+    const ID_ESTADO_RESERVADO = 2; // Asumimos 2 = 'reservado'
+    const ID_ESTADO_COMPRADO = 3; // Asumimos 3 = 'comprado'
+    const ID_PAGO_PAGADO = 5;     // Asumimos 5 = 'pagado' (en la tabla Estado)
+
+    const client = await pool.connect();
+
+    try {
+        // 1. ¡INICIAR TRANSACCIÓN!
+        await client.query('BEGIN');
+
+        // 2. Verificar la Reserva
+        const reservaQuery = `
+            SELECT r.num_pasajeros, v.precio, v.id_vuelo
+            FROM Reserva r
+            JOIN Reserva_Vuelo rv ON r.id_reserva = rv.id_reserva
+            JOIN Vuelo v ON rv.id_vuelo = v.id_vuelo
+            WHERE r.id_reserva = $1 AND r.usuario_id = $2 AND r.id_estado_reserva = $3
+        `;
+        const reservaResult = await client.query(reservaQuery, [id_reserva, usuario_id, ID_ESTADO_RESERVADO]);
+
+        if (reservaResult.rowCount === 0) {
+            throw new Error('Reserva no válida, no encontrada, no pertenece al usuario o ya fue pagada.');
+        }
+
+        const { num_pasajeros, precio } = reservaResult.rows[0];
+
+        // 3. Validar que el número de asientos coincida con los pasajeros
+        if (asientos.length !== num_pasajeros) {
+            throw new Error(`La reserva es para ${num_pasajeros} pasajeros, pero se seleccionaron ${asientos.length} asientos.`);
+        }
+
+        // 4. Procesar Billetes y Asientos (en un bucle)
+        for (const id_asiento of asientos) {
+            // 4a. Ocupar el asiento (esta es la lógica que movimos)
+            const asientoQuery = 'UPDATE Asiento SET disponible = FALSE WHERE id_asiento = $1 AND disponible = TRUE RETURNING id_asiento';
+            const asientoResult = await client.query(asientoQuery, [id_asiento]);
+            
+            if (asientoResult.rowCount === 0) {
+                throw new Error(`El asiento ID ${id_asiento} ya no está disponible.`);
+            }
+
+            // 4b. Generar número de billete único
+            const numero_billete = `TKT-${uuidv4().split('-')[0].toUpperCase()}`;
+
+            // 4c. Crear el Billete
+            const billeteQuery = `
+                INSERT INTO Billete 
+                (id_reserva, id_asiento, id_metodo_pago, precio, numero_billete, id_estado_billete, id_estado_pago)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+            `;
+            await client.query(billeteQuery, [
+                id_reserva, 
+                id_asiento, 
+                id_metodo_pago, 
+                precio, // El precio se saca del Vuelo
+                numero_billete,
+                ID_ESTADO_COMPRADO, // 'comprado'
+                ID_PAGO_PAGADO      // 'pagado'
+            ]);
+        }
+        
+        // 5. Actualizar el estado de la Reserva principal (marcar como 'comprada')
+        await client.query('UPDATE Reserva SET id_estado_reserva = $1 WHERE id_reserva = $2', [ID_ESTADO_COMPRADO, id_reserva]);
+
+        // 6. ¡ÉXITO! Confirmar la transacción
+        await client.query('COMMIT');
+        res.status(201).json({ message: 'Compra completada exitosamente', id_reserva: id_reserva });
+
+    } catch (err) {
+        // 7. ¡FALLO! Revertir todo
+        await client.query('ROLLBACK');
+        console.error('Error en transacción de compra:', err);
+        res.status(500).json({ error: 'Error al procesar la compra', details: err.message });
+    } finally {
+        client.release();
     }
 };
 

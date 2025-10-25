@@ -286,7 +286,6 @@ function renderStepReview(container: HTMLDivElement) {
 
     // Listener para volver
     container.querySelector('#btn-back-step2')!.addEventListener('click', () => {
-        // --- CORRECCIÓN ---
         renderStepPassengers(container); // Vuelve al paso 2
     });
 
@@ -299,7 +298,6 @@ function renderStepReview(container: HTMLDivElement) {
         btn.textContent = 'Procesando...';
         errorEl.textContent = '';
 
-        // --- CORRECCIÓN ---
         // El payload ya no incluye el array de 'asientos'
         const payload = {
             vuelos: [Number(wizardState.selectedVuelo.id_vuelo)],
