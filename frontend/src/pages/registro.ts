@@ -138,7 +138,7 @@ export function renderRegistro(container: HTMLDivElement) {
     const correo = (container.querySelector<HTMLInputElement>('#correo-reg'))!.value;
     const clave = (container.querySelector<HTMLInputElement>('#clave-reg'))!.value;
     const confirmarClave = (container.querySelector<HTMLInputElement>('#confirmar-clave-reg'))!.value;
-    const telefono = (container.querySelector<HTMLInputElement>('telefono'))!.value;
+    const telefono = (container.querySelector<HTMLInputElement>('#telefono'))!.value.trim(); 
 
     messageEl.className = 'text-center text-sm mt-3 text-red-500'; 
 
