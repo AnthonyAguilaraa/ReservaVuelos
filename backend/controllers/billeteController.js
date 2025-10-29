@@ -261,6 +261,51 @@ exports.comprarBilletes = async (req, res) => {
     }
 };
 
+exports.consultarMiHistorial = async (req, res) => {
+    // Obtenemos el id del usuario desde el token (inyectado por authenticateToken como req.user.id)
+    const usuario_id = req.user.id;
+    const ID_ESTADO_COMPRADO = 3; // Asumiendo 3 = 'comprado' para Billete.id_estado_billete
+
+    try {
+        const query = `
+            SELECT
+                b.id_billete,
+                b.numero_billete,
+                b.precio,
+                b.fecha_compra,
+                a.numero_asiento,
+                v.numero_vuelo,
+                v.fecha_salida,
+                v.hora_salida,
+                aer.nombre_aerolinea,
+                co.nombre_ciudad AS ciudad_origen,
+                cd.nombre_ciudad AS ciudad_destino
+            FROM Billete b
+            JOIN Asiento a ON b.id_asiento = a.id_asiento
+            JOIN Reserva r ON b.id_reserva = r.id_reserva
+            JOIN Reserva_Vuelo rv ON r.id_reserva = rv.id_reserva -- Asumiendo 1 billete por vuelo en reserva simple
+            JOIN Vuelo v ON rv.id_vuelo = v.id_vuelo
+            JOIN Aerolinea aer ON v.aerolinea_id = aer.id_aerolinea
+            JOIN Ciudad co ON v.ciudad_origen = co.id_ciudad
+            JOIN Ciudad cd ON v.ciudad_destino = cd.id_ciudad
+            WHERE
+                r.usuario_id = $1
+                AND b.id_estado_billete = $2 -- Asegurarnos que solo traiga los comprados
+            ORDER BY b.fecha_compra DESC; -- Más recientes primero
+        `;
+
+        const client = await pool.connect();
+        const result = await client.query(query, [usuario_id, ID_ESTADO_COMPRADO]);
+        client.release();
+
+        res.status(200).json(result.rows);
+
+    } catch (err) {
+        console.error('Error en consultarMiHistorial:', err);
+        res.status(500).json({ error: 'Error en el servidor al obtener el historial' });
+    }
+};
+
 
 // const pool = require('../config/db');
 

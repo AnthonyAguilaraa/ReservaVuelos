@@ -99,3 +99,27 @@ export async function comprarBilletes(payload: {
         return { success: false, message: (error as Error).message };
     }
 }
+
+export async function getMiHistorialDeCompras() {
+    try {
+        const headers = getAuthHeaders();
+        if (!headers['Authorization'] || headers['Authorization'] === 'Bearer null') {
+            return { success: false, message: 'No autorizado' };
+        }
+
+        const response = await fetch(`${API_URL}/billetes/mi-historial`, {
+            method: 'GET',
+            headers: headers
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'Error al cargar el historial de compras');
+        }
+        return { success: true, data: data }; // data será un array de billetes
+
+    } catch (error) {
+        console.error('Error en billeteService.getMiHistorialDeCompras:', error);
+        return { success: false, message: (error as Error).message };
+    }
+}

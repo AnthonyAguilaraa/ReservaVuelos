@@ -1,9 +1,8 @@
-// src/pages/dashboard.ts
 import { cerrarSesion } from '../services/authService';
 import { renderConsultaVuelos } from './consultaVuelos';
 import { renderReservaVuelos } from './reservaVuelos';
 import { renderCompraBilletes } from './compraBilletes';
-// 1. IMPORTAR el nuevo módulo de Perfil
+import { renderHistorialCompras } from './historialCompras';
 import { renderPerfilUsuario } from './perfilUsuario';
 
 export function renderDashboard(container: HTMLDivElement) {
@@ -40,6 +39,10 @@ export function renderDashboard(container: HTMLDivElement) {
                 <li>
                     <button id="btn-compra" class="${buttonBaseClass} ${buttonInactiveClass}">
                         Compra de Billetes
+                    </button>
+                </li>
+                <li>
+                    <button id="btn-historial" class="${buttonBaseClass} ${buttonInactiveClass}"> Mi Historial
                     </button>
                 </li>
                 <li>
@@ -100,6 +103,12 @@ export function renderDashboard(container: HTMLDivElement) {
        setActiveButton('btn-compra');
         contentArea.innerHTML = '';
         renderCompraBilletes(contentArea);
+    });
+
+    container.querySelector('#btn-historial')?.addEventListener('click', () => {
+        setActiveButton('btn-historial');
+        contentArea.innerHTML = '';
+        renderHistorialCompras(contentArea); // Llamar al nuevo módulo
     });
 
     // 2. MODIFY 'btn-perfil' listener

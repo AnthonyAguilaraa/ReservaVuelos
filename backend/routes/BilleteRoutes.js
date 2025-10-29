@@ -10,4 +10,5 @@ router.delete('/billete/:id', authenticateToken, billeteController.eliminarBille
 router.get('/billetes', authenticateToken, billeteController.consultarBilletes); // Consultar todos los Billetes
 router.get('/billete/:id', authenticateToken, billeteController.consultarBilletePorId); // Consultar Billete por ID
 router.post('/billete/comprar', authenticateToken, billeteController.comprarBilletes); // Comprar Billetes
+router.get('/billetes/mi-historial', authenticateToken, billeteController.consultarMiHistorial); // Obtener mi historial de compras
 module.exports = router;
