@@ -72,29 +72,40 @@ exports.modificarReserva = async (req, res) => {
 
 // Eliminar Reserva lógicamente (cambiar estado a 'cancelada')
 exports.eliminarReserva = async (req, res) => {
-  const { id } = req.params;
+    const { id } = req.params; // Este es el id_reserva
+    const usuario_id = req.user.id; // Obtenemos el ID del usuario del token por seguridad
 
-  try {
-    const queryExist = 'SELECT * FROM Reserva WHERE id_reserva = $1';
-    const resultExist = await pool.query(queryExist, [id]);
+    const ID_ESTADO_CANCELADO = 5; 
+    const ID_ESTADO_PENDIENTE = 2; 
 
-    if (resultExist.rowCount === 0) {
-      return res.status(404).json({ error: 'Reserva no encontrada' });
+    try {
+        const queryExist = `
+            SELECT id_estado_reserva FROM Reserva 
+            WHERE id_reserva = $1 AND usuario_id = $2
+        `;
+        const resultExist = await pool.query(queryExist, [id, usuario_id]);
+
+        if (resultExist.rowCount === 0) {
+            return res.status(404).json({ error: 'Reserva no encontrada o no pertenece a este usuario.' });
+        }
+
+        if (resultExist.rows[0].id_estado_reserva !== ID_ESTADO_PENDIENTE) {
+             return res.status(400).json({ error: 'Esta reserva no se puede cancelar porque ya fue pagada o cancelada previamente.' });
+        }
+
+        const queryUpdate = 'UPDATE Reserva SET id_estado_reserva = $1 WHERE id_reserva = $2 RETURNING *';
+        const values = [ID_ESTADO_CANCELADO, id]; // Usamos el ID 5
+
+        const client = await pool.connect();
+        const result = await client.query(queryUpdate, values);
+        client.release();
+
+        res.status(200).json({ message: 'Reserva cancelada exitosamente', reserva: result.rows[0] });
+
+    } catch (err) {
+        console.error('Error en eliminarReserva:', err);
+        res.status(500).json({ error: 'Error en el servidor' });
     }
-
-    // Realizamos la actualización del estado
-    const queryUpdate = 'UPDATE Reserva SET id_estado_reserva = $1 WHERE id_reserva = $2 RETURNING *';
-    const values = [ESTADOS_RESERVA.CANCELADO, id];
-
-    const client = await pool.connect();
-    const result = await client.query(queryUpdate, values);
-    client.release();
-
-    res.status(200).json({ message: 'Reserva cancelada exitosamente', reserva: result.rows[0] });
-  } catch (err) {
-    console.error('Error en eliminarReserva:', err);
-    res.status(500).json({ error: 'Error en el servidor' });
-  }
 };
 
 // Consultar todas las reservas

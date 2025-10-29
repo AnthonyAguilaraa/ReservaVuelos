@@ -119,3 +119,30 @@ exports.consultarAsientoPorId = async (req, res) => {
         res.status(500).json({ error: 'Error en el servidor' });
     }
 };
+
+exports.contarAsientosDisponibles = async (req, res) => {
+    const { id_vuelo } = req.params;
+    const ID_ESTADO_ACTIVO = 1; // Asumiendo 1 = 'activo'
+
+    try {
+        const query = `
+            SELECT COUNT(*) AS disponibles 
+            FROM Asiento 
+            WHERE id_vuelo = $1 
+              AND disponible = TRUE 
+              AND id_estado = $2
+        `;
+        const values = [id_vuelo, ID_ESTADO_ACTIVO];
+
+        const client = await pool.connect();
+        const result = await client.query(query, values);
+        client.release();
+
+        const count = parseInt(result.rows[0].disponibles, 10);
+        res.status(200).json({ count }); // Devuelve ej: { "count": 15 }
+
+    } catch (err) {
+        console.error('Error en contarAsientosDisponibles:', err);
+        res.status(500).json({ error: 'Error en el servidor al contar asientos' });
+    }
+};

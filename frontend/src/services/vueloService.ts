@@ -191,3 +191,33 @@ export async function getAsientosDisponibles(id_vuelo: number) {
         return { success: false, message: (error as Error).message };
     }
 }
+
+/**
+ * Llama a: GET /api/asientos/disponibles/count/:id_vuelo
+ * Obtiene el número de asientos disponibles para un vuelo.
+ * @param id_vuelo El ID numérico del vuelo.
+ */
+export async function getConteoAsientosDisponibles(id_vuelo: number) {
+    try {
+        const headers = getAuthHeaders();
+        if (!headers['Authorization'] || headers['Authorization'] === 'Bearer null') {
+            return { success: false, message: 'No autorizado' };
+        }
+
+        const response = await fetch(`${API_URL}/asientos/disponibles/count/${id_vuelo}`, {
+            method: 'GET',
+            headers: headers
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'Error al contar asientos');
+        }
+        // Devuelve el conteo, ej: { success: true, count: 15 }
+        return { success: true, count: data.count };
+
+    } catch (error) {
+        console.error('Error en vueloService.getConteoAsientosDisponibles:', error);
+        return { success: false, message: (error as Error).message, count: 0 }; // Devuelve 0 en error
+    }
+}

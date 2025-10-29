@@ -9,5 +9,5 @@ router.put('/asiento', authenticateToken, asientoController.modificarAsiento); /
 router.delete('/asiento/:id', authenticateToken, asientoController.eliminarAsiento); // Eliminar Asiento
 router.get('/asientos/:id_vuelo', authenticateToken, asientoController.consultarAsientos); // Consultar todos los Asientos de un Vuelo
 router.get('/asiento/:id', authenticateToken, asientoController.consultarAsientoPorId); // Consultar Asiento por ID
-
+router.get('/asientos/disponibles/count/:id_vuelo', authenticateToken, asientoController.contarAsientosDisponibles); // Cuenta asientos disponibles
 module.exports = router;
